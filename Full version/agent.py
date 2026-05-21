@@ -13,17 +13,17 @@ class TumorCell(mesa.Agent):
             [ 0.5,   0.0,   0.0,   0.0 ],   
             [ 0.0,  -2.0,   0.0,   0.0 ],   
             [ 0.0,   0.0,  -2.0,   0.5 ],    
-            [ 0.0,   2.0,   0.0,  -1.0 ]    
+            [ 0.0,  -3.0,   0.0,  -1.0 ]    
         ], dtype=np.float32)
         self.theta_initial = np.array([0.55, 0.0, 0.7, -0.25, 0.0], dtype=np.float32)
         self.output_w = np.array([
             [-0.5,  1.0, -0.5,  0.0,  0.0],  
             [ 0.0, 0.55, -0.5,  0.0,  0.0],  
             [ 0.0,  0.0,  2.0,  2.0,  0.0],  
-            [ 0.0,  0.0,  0.0,  0.0,  4.0],   
+            [ 0.0,  0.0,  0.0,  0.0,  6.0],   
             [ 0.0,  0.0,  0.0,  0.0,  1.0]  
         ], dtype=np.float32)  
-        self.phi_initial = np.array([0.0, 0.0, 0.0, 2.5, 0.75], dtype=np.float32)
+        self.phi_initial = np.array([0.0, 0.0, 0.0, 1.5, 0.75], dtype=np.float32)
 
 
     def _sigmoid(self, x):
@@ -119,13 +119,13 @@ class TumorCell(mesa.Agent):
             self.apoptosis()
             return
 
-        self.is_glycolytic = output[3] < 0.5
+        self.is_glycolytic = output[3] > 0.5
 
-        O2_PROLIF  = 0.067
-        O2_QUIESC  = 0.013
-        G_AERO     = 0.013   # circa O2/5
-        G_ANAERO   = 0.234   # G_AERO * 18
-        H_PROD     = 0.001   # piccolo, si accumula nel tempo
+        O2_PROLIF  = 0.02
+        O2_QUIESC  = 0.004
+        G_AERO     = 0.004   
+        G_ANAERO   = 0.072   
+        H_PROD     = 0.003   
 
         # Determine resource consumption based on action
         if self.is_glycolytic:

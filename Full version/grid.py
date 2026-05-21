@@ -21,14 +21,14 @@ class TumorEnvironment:
         self.fig, self.ax = None, None
         self.im_cells, self.im_glucose, self.im_oxygen, self.im_h_plus = None, None, None, None
 
-    def diffuse_resources(self, substeps=5):
+    def diffuse_resources(self, substeps=30):
         laplacian_kernel = np.array([[0, 1, 0],
                                     [1, -4, 1],
                                     [0, 1, 0]])
         # Coefficienti stabili — D_paper / substeps
-        D_O2 = 0.1 / substeps
-        D_G  = 0.15 / substeps
-        D_H  = 0.08 / substeps
+        D_O2 = 1.04 / substeps
+        D_G  = 5.24 / substeps
+        D_H  = 0.63 / substeps
 
         for _ in range(substeps):
             delta = convolve2d(self.oxygen, laplacian_kernel,
@@ -88,7 +88,7 @@ class TumorEnvironment:
         self.im_glucose = self.ax[2].imshow(self.glucose, cmap='Oranges', vmin=0, vmax=1)
         self.ax[2].set_title("Glucose Levels")
 
-        self.im_h_plus = self.ax[3].imshow(self.h_plus, cmap='Blues', vmin=0, vmax=0.05)
+        self.im_h_plus = self.ax[3].imshow(self.h_plus, cmap='Blues', vmin=0, vmax=0.1)
         self.ax[3].set_title("H+ Levels")
 
         plt.tight_layout()
@@ -155,9 +155,9 @@ class TestModel(mesa.Model):
         self.env.update_plot(self)
 
 if __name__ == "__main__":
-    model = TestModel(width=100, height=100)
-    for i in range(100):
-        print(f"Step {i+1}/100 running...")
+    model = TestModel(width=200, height=200)
+    for i in range(200):
+        print(f"Step {i+1}/200 running...")
         model.step()
 
     plt.ioff()
