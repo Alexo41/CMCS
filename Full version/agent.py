@@ -15,7 +15,7 @@ class TumorCell(mesa.Agent):
             [ 0.0,   0.0,  -2.0,   0.5 ],    
             [ 0.0,  -3.0,   0.0,  -1.0 ]    
         ], dtype=np.float32)
-        self.theta_initial = np.array([0.55, 0.0, 0.7, -0.25, 0.0], dtype=np.float32)
+        self.theta_initial = np.array([0.55, 0.0, 0.9, -0.25, 0.0], dtype=np.float32)
         self.output_w = np.array([
             [-0.5,  1.0, -0.5,  0.0,  0.0],  
             [ 0.0, 0.55, -0.5,  0.0,  0.0],  
@@ -81,6 +81,7 @@ class TumorCell(mesa.Agent):
         self.state = 5 if self.is_glycolytic else 2 # Quiescent state
 
     def apoptosis(self):
+        self.model.apoptosis_count += 1
         self.model.grid.remove_agent(self)
         self.model.agents.discard(self)
 
@@ -94,8 +95,15 @@ class TumorCell(mesa.Agent):
     def step(self):
         self.age += 1
         
+        O2_PROLIF  = 0.012
+        O2_QUIESC  = 0.002
+        G_AERO     = 0.003   
+        G_ANAERO   = 0.054   
+        H_PROD     = 0.003   
+
+
         # Get inputs for the neural network computing the new state
-        neighbors = self.model.grid.get_neighborhood(self.pos, moore=False, include_center=False)
+        neighbors = self.model.grid.get_neighborhood(self.pos, moore=True, include_center=False)
         num_neighbors = 0
         for n in neighbors:
             if not self.model.grid.is_cell_empty(n):
@@ -107,39 +115,34 @@ class TumorCell(mesa.Agent):
         h_plus_level = self.model.env.h_plus[x, y]
 
         # Feed-forward computation
-        input = np.array([num_neighbors / 4.0, oxygen_level, glucose_level, h_plus_level], dtype=np.float32)
+        input = np.array([num_neighbors / 8.0, oxygen_level, glucose_level, h_plus_level], dtype=np.float32)
         hidden = self._sigmoid(np.dot(self.hidden_w, input) - self.theta_initial)
         output = self._sigmoid(np.dot(self.output_w, hidden) - self.phi_initial)
 
         # Highest output value determines the action
         # Proliferation = 0, Quiescence = 1, Apoptosis = 2
         action = np.argmax(output[:3])
+        self.is_glycolytic = output[3] > 0.5
 
         if action == 2:
+            if self.is_glycolytic:
+                self.model.env.consume(self.pos, oxygen=0.0, glucose=0.0, h_plus=H_PROD)  # Produce H+ even in apoptosis if glycolytic
             self.apoptosis()
             return
 
-        self.is_glycolytic = output[3] > 0.5
-
-        O2_PROLIF  = 0.02
-        O2_QUIESC  = 0.004
-        G_AERO     = 0.004   
-        G_ANAERO   = 0.072   
-        H_PROD     = 0.003   
-
         # Determine resource consumption based on action
         if self.is_glycolytic:
-            o2_rate  = O2_PROLIF * 0.05  
+            o2_rate  = O2_PROLIF * 0.05 if action == 0 else O2_QUIESC * 0.05
             g_rate   = G_ANAERO if action == 0 else G_ANAERO / 5
             hp_prod  = H_PROD
-            min_o2   = 0.001
-            min_g    = g_rate * 0.1
+            min_o2   = 0.0001
+            min_g    = g_rate * 0.005
         else:
             o2_rate  = O2_PROLIF if action == 0 else O2_QUIESC
             g_rate   = G_AERO if action == 0 else G_AERO / 5
             hp_prod  = 0.0
-            min_o2   = o2_rate
-            min_g    = g_rate * 0.1
+            min_o2   = o2_rate * 0.3
+            min_g    = g_rate * 0.01
         
 
         # Necrosis case
